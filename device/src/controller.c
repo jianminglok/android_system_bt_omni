@@ -461,7 +461,6 @@ static const controller_t interface = {
 
   get_ble_resolving_list_max_size,
   set_ble_resolving_list_max_size,
-  get_local_supported_codecs
 };
 
 const controller_t *controller_get_interface() {
