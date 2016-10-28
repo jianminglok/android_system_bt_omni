@@ -237,6 +237,7 @@ static const hci_packet_parser_t interface = {
   parse_ble_read_local_supported_features_response,
   parse_ble_read_resolving_list_size_response,
   parse_ble_read_suggested_default_data_length_response
+  parse_read_local_supported_codecs_response
 };
 
 const hci_packet_parser_t *hci_packet_parser_get_interface() {
