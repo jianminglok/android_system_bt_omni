@@ -49,6 +49,7 @@ const uint8_t SCO_HOST_BUFFER_SIZE = 0xff;
 #define MAX_FEATURES_CLASSIC_PAGE_COUNT 3
 #define BLE_SUPPORTED_STATES_SIZE         8
 #define BLE_SUPPORTED_FEATURES_SIZE       8
+#define MAX_LOCAL_SUPPORTED_CODECS_SIZE   8
 
 static const hci_t *hci;
 static const hci_packet_factory_t *packet_factory;
@@ -71,6 +72,8 @@ static uint8_t ble_resolving_list_max_size;
 static uint8_t ble_supported_states[BLE_SUPPORTED_STATES_SIZE];
 static bt_device_features_t features_ble;
 static uint16_t ble_suggested_default_data_length;
+static uint8_t local_supported_codecs[MAX_LOCAL_SUPPORTED_CODECS_SIZE];
+static uint8_t no_of_local_supported_codecs = 0;
 
 static bool readable;
 static bool ble_supported;
@@ -105,6 +108,12 @@ static future_t *start_up(void) {
   );
 
   packet_parser->parse_generic_command_complete(response);
+
+  #ifdef QLOGKIT_USERDEBUG
+  /* Enable SOC Logging */
+  UINT8       param[5] = {0x10,0x03,0x00,0x00,0x01};
+  BTM_VendorSpecificCommand(HCI_VS_HOST_LOG_OPCODE,5,param,NULL);
+  #endif
 
   // Read the local version info off the controller next, including
   // information such as manufacturer and supported HCI version
@@ -241,6 +250,14 @@ static future_t *start_up(void) {
     packet_parser->parse_generic_command_complete(response);
   }
 
+  // read local supported codecs
+  if( HCI_READ_LOCAL_CODECS_SUPPORTED(supported_commands)) {
+    response = AWAIT_COMMAND(packet_factory->make_read_local_supported_codecs());
+    packet_parser->parse_read_local_supported_codecs_response(
+        response,
+        &no_of_local_supported_codecs, local_supported_codecs);
+  }
+
   readable = true;
   return future_new_immediate(FUTURE_SUCCESS);
 }
@@ -288,6 +305,15 @@ static const bt_device_features_t *get_features_classic(int index) {
 static uint8_t get_last_features_classic_index(void) {
   assert(readable);
   return last_features_classic_page_index;
+}
+
+static uint8_t *get_local_supported_codecs(uint8_t *no_of_codecs) {
+  assert(readable);
+  if( no_of_local_supported_codecs) {
+    *no_of_codecs = no_of_local_supported_codecs;
+    return local_supported_codecs;
+  }
+  else return NULL;
 }
 
 static const bt_device_features_t *get_features_ble(void) {
@@ -461,6 +487,7 @@ static const controller_t interface = {
 
   get_ble_resolving_list_max_size,
   set_ble_resolving_list_max_size,
+  get_local_supported_codecs
 };
 
 const controller_t *controller_get_interface() {
